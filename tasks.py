@@ -2,6 +2,7 @@ import boto3
 import requests
 import google.generativeai as genai
 import constants
+import json
 
 # AWS DynamoDB Configuration
 aws_access_key_id = constants.Credentials.aws_access_key_id
@@ -25,7 +26,24 @@ def generate_content_task(id: str):
         if task:
             # Generate content
             status_update(id, status=constants.LogStatus.IN_PROGRESS)
-            response = model.generate_content(task['Prompt'])
+            
+            mode_options = {0:"home services",1: "salon services", 2: "home and salon services"}
+            serve_options = {0:"for women",1: "for men", 2: "for both men and women"}
+            gender_options = {0: "female", 1: "male", 2: "other"}
+
+            userdata=json.loads(task['userdata'])
+            mode = mode_options.get(userdata['mode'], "")
+            mode +=" "+ serve_options.get(userdata['serve'], "")
+            gender = gender_options.get(userdata['gender'], "")
+            services = ','.join(f"{service}({userdata['services'][service]})" for service in userdata['services'])
+            products = ','.join(f"{product}({userdata['products'][product]})" for product in userdata['products'])
+            
+            title=task['title']
+            
+            prompt="Please create a clear service description for the "+title+" makeup service provided by "+userdata['brand_name']+" from "+userdata['location']+" , a "+userdata['brand_size']+"-sized company that offers exclusive "+mode+". The skilled "+gender+" makeup artist specializes in "+services+" using "+products+" products."
+            prompt+="\n\nThe description should be small. and only contain few key points that highlight the service. max points limits is 8 and each point should be more then 30 words and no point title. and only return points"
+            
+            response = model.generate_content(prompt)
             
             # Update DynamoDB table with task completion status
             status_update(id, status=constants.LogStatus.COMPLETED)

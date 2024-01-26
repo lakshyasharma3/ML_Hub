@@ -4,6 +4,7 @@ from tasks import generate_content_task
 import constants as constants
 from datetime import datetime
 import boto3
+import json
 
 # Configure AWS credentials and DynamoDB region
 aws_access_key_id = constants.Credentials.aws_access_key_id
@@ -38,12 +39,14 @@ async def generate_content(payload: dict):
         dict: Status message indicating if the task is scheduled for processing.
     """
     try:
-        prompt = payload.get("prompt")
+        # prompt = payload.get("prompt")
+        title = payload.get("title")
+        user_data = payload.get("data")
         call_back_url = payload.get("call_back_url")
         universal_id = payload.get("id")
 
         # Validate payload
-        if not prompt or not call_back_url or not universal_id:
+        if not title or not user_data or not call_back_url or not universal_id:
             raise HTTPException(status_code=422, detail="Missing required fields in the request payload")
 
         # Generate unique ID for tracking
@@ -78,7 +81,8 @@ def database_create(id: str, payload: dict, status: str, last_updated: str = dat
             'TrackingID': id,
             'LastUpdated': last_updated,
             'Status': status,
-            'Prompt': payload.get("prompt"),
+            'title': payload.get("title"),
+            'userdata': json.dumps(payload.get("data")),
             'CallBackURL': payload.get("call_back_url"),
             'uID': payload.get("id"),
             'Response': ""
